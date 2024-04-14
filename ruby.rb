@@ -1,14 +1,12 @@
+require_relative "analysis/file_map"
 require "json"
 
 class Lsp
-  attr_reader :new_message
-  private :new_message
-
-  def initialize
-    @new_message = true
-  end
-
   def call
+    file_map = Analysis::FileMap.new
+
+    #VS Code
+
     loop do
       buffer = STDIN.gets("\r\n\r\n")
       content_length = buffer.match(/Content-Length: (\d+)/i)[1].to_i
@@ -19,8 +17,179 @@ class Lsp
       case request[:method]
       when "initialize"
         respond(request)
+      when "textDocument/didOpen"
+        file_uri = request[:params][:textDocument][:uri]
+        content = request[:params][:textDocument][:text]
+
+        file_map.upsert(file_uri:, content:)
+        log("Opened #{file_uri}")
+        notification_response(request, file_map)
+      when "textDocument/didChange"
+        file_uri = request[:params][:textDocument][:uri]
+
+        request[:params][:contentChanges].each do |change|
+          file_map.upsert(file_uri:, content: change[:text])
+        end
+        log("Contents Updated")
+        notification_response(request, file_map)
+      when "textDocument/hover"
+        hover_response(request, file_map)
+      when "textDocument/definition"
+        definition_response(request)
+      when "textDocument/codeAction"
+        code_action_response(request, file_map)
+      when "textDocument/completion"
+        completion_provider_response(request)
       end
     end
+  end
+
+  private
+
+  def notification_response(request, file_map)
+    uri = request[:params][:textDocument][:uri]
+    content = file_map.hash[uri]
+
+    line = nil
+    search_word = "VS Code"
+    content.split("\n").each_with_index do |text_line, index|
+      if text_line.include?(search_word)
+        line = index
+      end
+    end
+
+    unless line.nil?
+      response = {
+        jsonrpc: "2.0",
+        method: "textDocument/publishDiagnostics",
+        params: {
+          uri:,
+          diagnostics: [
+            {
+              range: {
+                start: {
+                  line: line,
+                  character: 0
+                },
+                end: {
+                  line: line,
+                  character: 0
+                }
+              },
+              severity: 1,
+              source: "Common Sense",
+              message: "Please use a good editor",
+            }
+          ]
+        }
+      }.to_json
+
+      write_to_stdout(response)
+    end
+  end
+
+  def completion_provider_response(request)
+    response = {
+      jsonrpc: "2.0",
+      id: request[:id],
+      result: {
+        items: [
+          {
+            label: "Neovim (BTW)", 
+            detail: "Very cool editor", 
+            documentation: "It's quite fun",
+          }
+        ]
+      }
+    }.to_json
+
+    write_to_stdout(response)
+  end
+
+  def code_action_response(request, file_map)
+    uri = request[:params][:textDocument][:uri]
+    content = file_map.hash[uri]
+
+    line = nil 
+    character = nil
+    search_word = "VS Code"
+    content.split("\n").each_with_index do |text_line, index|
+      if text_line.include?(search_word)
+        line = index 
+        character = text_line.index(search_word)
+        break
+      end
+    end
+
+    unless line.nil?
+      response = {
+        jsonrpc: "2.0",
+        id: request[:id],
+        result: [
+          {
+            title: "Replace VS code with a superior editor",
+            edit: {
+              changes: {
+                uri => [
+                  {
+                    range: {
+                      start: {
+                        line:,
+                        character:
+                      },
+                      end: {
+                        line:,
+                        character: character + search_word.size
+                      }
+                    },
+                    newText: "Neovim"
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }.to_json
+
+      write_to_stdout(response)
+    end
+  end
+
+  def definition_response(request)
+    position = request[:params][:position]
+    response = {
+      jsonrpc: "2.0",
+      id: request[:id],
+      result: {
+        uri: request[:params][:textDocument][:uri],
+        range: {
+          start: {
+            line: position[:line] - 2,
+            character: 0
+          },
+          end: {
+            line: position[:line] - 2,
+            character: 0
+          }
+        }
+      }
+    }.to_json
+
+    write_to_stdout(response)
+  end
+
+  def hover_response(request, file_map)
+    file_uri = request[:params][:textDocument][:uri]
+    characters = file_map.hash[file_uri].length
+    response = {
+      jsonrpc: "2.0",
+      id: request[:id],
+      result: {
+        contents: "File: #{file_uri}, Characters: #{characters}"
+      }
+    }.to_json
+
+    write_to_stdout(response)
   end
 
   def respond(request)
@@ -28,7 +197,13 @@ class Lsp
       jsonrpc: "2.0",
       id: request[:id],
       result: {
-        capabilities: {},
+        capabilities: {
+          textDocumentSync: 1,
+          hoverProvider: true,
+          definitionProvider: true,
+          codeActionProvider: true,
+          completionProvider: {},
+        },
         serverInfo: {
           name: "educationlsp",
           version: "0.0.0.0.0.0-beta1.final"
@@ -36,10 +211,14 @@ class Lsp
       }
     }.to_json
 
-    response_string = "Content-Length: #{response.bytesize}\r\n\r\n#{response}"
+    write_to_stdout(response)
+  end
+
+  def write_to_stdout(json)
+    json_string = "Content-Length: #{json.bytesize}\r\n\r\n#{json}"
     stdout = STDOUT.binmode
 
-    stdout.print response_string
+    stdout.print json_string
     $stdout.flush
 
     log("Sending response")
@@ -48,8 +227,6 @@ class Lsp
   def log_message(request, key)
     File.open("log.txt", "a") do |f|
       f.write "Received message with #{request[key]}\n"
-      f.write "Received message with #{request.keys}\n"
-      f.write "Received message with #{request}\n"
     end
   end
 
