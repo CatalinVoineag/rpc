@@ -35,6 +35,14 @@ class Lsp
       when "textDocument/hover"
         hover_response(request, file_map)
       when "textDocument/definition"
+        log("DEFINITION")
+
+        uri = request[:params][:textDocument][:uri]
+        line_number = request[:params][:position][:line].to_s
+        line = file_map.hash_lines[uri][line_number]
+        log(line)
+        log(line_number)
+        #file_map.hash[uri][position]
         definition_response(request)
       when "textDocument/codeAction"
         code_action_response(request, file_map)
