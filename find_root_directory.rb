@@ -1,3 +1,5 @@
+require "byebug"
+
 class FindRootDirectory
   attr_reader :uri
   private :uri
@@ -12,7 +14,6 @@ class FindRootDirectory
 
   def call
     uri_components = uri.split("/")
-    uri_components.pop
     root_path = nil
 
     loop do
@@ -21,7 +22,7 @@ class FindRootDirectory
       root_path = uri_components.join("/")
       root_path = "#{root_path}/.git"
 
-      terminal = IO.popen("[ -d /#{root_path} ] && echo true")
+      terminal = IO.popen("([ -f /#{root_path} ] || [ -d /#{root_path} ]) && echo true")
         if terminal.gets&.strip == "true"
           root_path = root_path.split("/")
           root_path.pop
@@ -32,6 +33,6 @@ class FindRootDirectory
 
       uri_components.pop
     end
-    root_path
+    return root_path unless root_path.include?(".git")
   end
 end
