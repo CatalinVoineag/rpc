@@ -159,32 +159,24 @@ class Lsp
   end
 
   def definition_response(request, file_map)
-    #uri = request[:params][:textDocument][:uri],
-    #position = request[:params][:position]
-    #line_number = position[:line].to_s
-
-    #line = file_map.hash_lines[uri][line_number]
-
     uri = request[:params][:textDocument][:uri]
     line_number = request[:params][:position][:line].to_s
     line = file_map.hash_lines[uri][line_number]
 
-    association_file = FindAssociation.new(line_text: line, file_uri: uri).call
-
+    association = FindAssociation.new(line_text: line, file_uri: uri).call
 
     log("FILE")
-    log(association_file)
-    #association_file = nil #FindAssociation.new(line_text: line, file_uri: uri)
+    log(association.path)
 
-    if association_file
+    if association.path
       response = {
         jsonrpc: "2.0",
         id: request[:id],
         result: {
-          uri: "file://#{association_file}",
+          uri: "file://#{association.path}",
           range: {
             start: {
-              line: 0,
+              line: association.start_line,
               character: 0
             },
             end: {
