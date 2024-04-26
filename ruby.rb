@@ -1,4 +1,5 @@
 require_relative "analysis/file_map"
+require_relative "find_association"
 require "json"
 
 class Lsp
@@ -35,7 +36,9 @@ class Lsp
       when "textDocument/hover"
         hover_response(request, file_map)
       when "textDocument/definition"
-        definition_response(request)
+        log("DEFINITION")
+
+        definition_response(request, file_map)
       when "textDocument/codeAction"
         code_action_response(request, file_map)
       when "textDocument/completion"
@@ -155,27 +158,37 @@ class Lsp
     end
   end
 
-  def definition_response(request)
-    position = request[:params][:position]
-    response = {
-      jsonrpc: "2.0",
-      id: request[:id],
-      result: {
-        uri: request[:params][:textDocument][:uri],
-        range: {
-          start: {
-            line: position[:line] - 2,
-            character: 0
-          },
-          end: {
-            line: position[:line] - 2,
-            character: 0
+  def definition_response(request, file_map)
+    uri = request[:params][:textDocument][:uri]
+    line_number = request[:params][:position][:line].to_s
+    line = file_map.hash_lines[uri][line_number]
+
+    association = FindAssociation.new(line_text: line, file_uri: uri).call
+
+    log("FILE")
+    log(association.path)
+
+    if association.path
+      response = {
+        jsonrpc: "2.0",
+        id: request[:id],
+        result: {
+          uri: "file://#{association.path}",
+          range: {
+            start: {
+              line: association.start_line,
+              character: 0
+            },
+            end: {
+              line: 0,
+              character: 0
+            }
           }
         }
-      }
-    }.to_json
+      }.to_json
 
-    write_to_stdout(response)
+      write_to_stdout(response)
+    end
   end
 
   def hover_response(request, file_map)
