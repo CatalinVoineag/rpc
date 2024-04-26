@@ -1,6 +1,8 @@
+require "active_support/all"
+
 module Analysis
   class FileMap
-    attr_accessor :hash, :hash_lines
+    attr_accessor :hash, :hash_lines, :root_path
 
     def initialize
       @hash = {}
@@ -22,12 +24,6 @@ module Analysis
 
       array_of_file_lines.each_with_index do |line, index|
         hash_lines[file_uri].merge!({ index.to_s => line })
-      end
-    end
-
-    def log(message)
-      File.open("log.txt", "a") do |f|
-        f.write "#{message}\n"
       end
     end
   end

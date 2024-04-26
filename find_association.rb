@@ -1,16 +1,16 @@
-require_relative "find_root_directory"
 require "active_support/all"
 
 Association = Struct.new(:path, :start_line)
 
 class FindAssociation
-  attr_reader :line_text, :file_uri, :file_name
-  private :line_text, :file_uri, :file_name
+  attr_reader :line_text, :file_uri, :file_name, :root_path
+  private :line_text, :file_uri, :file_name, :root_path
 
-  def initialize(line_text:, file_uri:)
+  def initialize(line_text:, file_uri:, root_path:)
     @line_text = line_text
     @file_uri = file_uri.gsub("file://", "")
     @file_name = @file_uri.split("/")[-1]
+    @root_path = root_path
   end
 
   def call
@@ -22,7 +22,6 @@ class FindAssociation
                            get_association_file(line_text)
                          end
 
-      root_path = FindRootDirectory.call(file_uri)
       association_path = get_association_path(root_path, association_file)
 
       log("FILE URI")
@@ -83,8 +82,8 @@ class FindAssociation
 
 
   def log(message)
-    File.open("log.txt", "a") do |f|
-      f.write "#{message}\n"
-    end
+    #File.open("log.txt", "a") do |f|
+    #  f.write "#{message}\n"
+    #end
   end
 end

@@ -1,5 +1,6 @@
 require_relative "analysis/file_map"
 require_relative "find_association"
+require "active_support/all"
 require "json"
 
 class Lsp
@@ -17,6 +18,7 @@ class Lsp
 
       case request[:method]
       when "initialize"
+        file_map.root_path = request[:params][:rootPath]
         respond(request)
       when "textDocument/didOpen"
         file_uri = request[:params][:textDocument][:uri]
@@ -163,7 +165,11 @@ class Lsp
     line_number = request[:params][:position][:line].to_s
     line = file_map.hash_lines[uri][line_number]
 
-    association = FindAssociation.new(line_text: line, file_uri: uri).call
+    association = FindAssociation.new(
+      line_text: line,
+      file_uri: uri,
+      root_path: file_map.root_path
+    ).call
 
     log("FILE")
     log(association.path)
@@ -238,13 +244,13 @@ class Lsp
   end
 
   def log_message(request, key)
-    File.open("log.txt", "a") do |f|
-      f.write "Received message with #{request[key]}\n"
-    end
+   # File.open("log.txt", "a") do |f|
+   #   f.write "Received message with #{request[key]}\n"
+   # end
   end
 
   def log(message)
-    File.open("log.txt", "a") do |f|
+    File.open("/home/catalin/.local/state/nvim/lsp.log", "a") do |f|
       f.write "#{message}\n"
     end
   end
