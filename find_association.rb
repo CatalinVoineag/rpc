@@ -16,17 +16,18 @@ class FindAssociation
   def call
     association = Association.new
     if line_text.include?("belongs_to") || line_text.include?("has_many")
-      association_file = if line_text.include?("through:")
+      association_file = if line_text.include?("class_name:")
+                           get_class_name_file(line_text)
+                         elsif line_text.include?("through:")
                            get_through_file(line_text)
                          else
                            get_association_file(line_text)
                          end
-
       association_path = get_association_path(root_path, association_file)
 
       log("FILE URI")
       log(file_uri)
-      log("ASOC FILE")
+      log("ASOC PATH")
       log(association_path)
       log("ROOT")
       log(root_path)
@@ -67,6 +68,14 @@ class FindAssociation
     "#{sanitized_value.singularize}.rb"
   end
 
+  def get_class_name_file(line_text)
+    array_of_words = line_text.split
+    class_name = array_of_words[array_of_words.index("class_name:") + 1].undump
+    class_name_file = class_name.gsub("::", "/").gsub(",", "").downcase
+
+    "#{class_name_file}.rb"
+  end
+
   def find_start_line(path, association_file_name)
     line = nil
     association_file_name.gsub!(".rb", "")
@@ -80,10 +89,9 @@ class FindAssociation
     line
   end
 
-
   def log(message)
-    #File.open("log.txt", "a") do |f|
-    #  f.write "#{message}\n"
-    #end
+    File.open("/home/catalin/.local/state/nvim/lsp.log", "a") do |f|
+      f.write "#{message}\n"
+    end
   end
 end
