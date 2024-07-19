@@ -1,5 +1,6 @@
 require_relative "analysis/file_map"
 require_relative "find_association"
+require_relative "find_controller_view"
 require "active_support/all"
 require "json"
 
@@ -171,8 +172,11 @@ class Lsp
       root_path: file_map.root_path
     ).call
 
-    log("FILE")
-    log(association.path)
+    controller_view = FindControllerView.new(
+      line_text: line,
+      file_uri: uri,
+      root_path: file_map.root_path
+    ).call
 
     if association.path
       response = {
@@ -183,6 +187,26 @@ class Lsp
           range: {
             start: {
               line: association.start_line,
+              character: 0
+            },
+            end: {
+              line: 0,
+              character: 0
+            }
+          }
+        }
+      }.to_json
+
+      write_to_stdout(response)
+    elsif controller_view&.path
+      response = {
+        jsonrpc: "2.0",
+        id: request[:id],
+        result: {
+          uri: "file://#{controller_view.path}",
+          range: {
+            start: {
+              line: 0,
               character: 0
             },
             end: {
