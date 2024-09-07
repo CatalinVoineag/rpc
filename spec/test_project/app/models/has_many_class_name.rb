@@ -1,0 +1,2 @@
+class HasManyClassName
+end

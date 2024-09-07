@@ -1,12 +1,20 @@
 require_relative "analysis/file_map"
 require_relative "find_association"
 require_relative "find_controller_view"
+require_relative "find_controller"
+require_relative "find_class"
 require "active_support/all"
 require "json"
+
+require "byebug"
+require "byebug/core"
 
 class Lsp
   def call
     file_map = Analysis::FileMap.new
+
+    #Byebug.wait_connection = true
+    #Byebug.start_server("localhost", 8080)
 
     #VS Code
 
@@ -36,8 +44,8 @@ class Lsp
         end
         log("Contents Updated")
         notification_response(request, file_map)
-      when "textDocument/hover"
-        hover_response(request, file_map)
+      #when "textDocument/hover"
+      #  hover_response(request, file_map)
       when "textDocument/definition"
         log("DEFINITION")
 
@@ -165,6 +173,7 @@ class Lsp
     uri = request[:params][:textDocument][:uri]
     line_number = request[:params][:position][:line].to_s
     line = file_map.hash_lines[uri][line_number]
+    char_number = request[:params][:position][:character]
 
     association = FindAssociation.new(
       line_text: line,
@@ -172,17 +181,12 @@ class Lsp
       root_path: file_map.root_path
     ).call
 
-    controller_view = FindControllerView.new(
-      line_text: line,
-      file_uri: uri,
-      root_path: file_map.root_path
-    ).call
-
     if association.path
       response = {
-        jsonrpc: "2.0",
+        jsonrpc: '2.0',
         id: request[:id],
         result: {
+          priority: true,
           uri: "file://#{association.path}",
           range: {
             start: {
@@ -197,12 +201,21 @@ class Lsp
         }
       }.to_json
 
-      write_to_stdout(response)
-    elsif controller_view&.path
+      return write_to_stdout(response)
+    end
+
+    controller_view = FindControllerView.new(
+      line_text: line,
+      file_uri: uri,
+      root_path: file_map.root_path
+    ).call
+
+    if controller_view&.path
       response = {
-        jsonrpc: "2.0",
+        jsonrpc: '2.0',
         id: request[:id],
         result: {
+          priority: true,
           uri: "file://#{controller_view.path}",
           range: {
             start: {
@@ -217,7 +230,65 @@ class Lsp
         }
       }.to_json
 
-      write_to_stdout(response)
+      return write_to_stdout(response)
+    end
+
+    klass = FindClass.new(
+      line:,
+      uri:,
+      root_path: file_map.root_path,
+      char_number:
+    ).call
+
+    if klass&.path
+      response = {
+        jsonrpc: "2.0",
+        id: request[:id],
+        result: {
+          priority: true,
+          uri: "file://#{klass.path}",
+          range: {
+            start: {
+              line: 0,
+              character: 0
+            },
+            end: {
+              line: 0,
+              character: 0
+            }
+          }
+        }
+      }.to_json
+
+      return write_to_stdout(response)
+    end
+
+    controller = FindController.new(
+      file_uri: uri,
+      file_map:
+    ).call
+
+    if controller&.path
+      response = {
+        jsonrpc: "2.0",
+        id: request[:id],
+        result: {
+          priority: true,
+          uri: "file://#{controller.path}",
+          range: {
+            start: {
+              line: controller.line_number,
+              character: controller.char_number
+            },
+            end: {
+              line: 0,
+              character: 0
+            }
+          }
+        }
+      }.to_json
+
+      return write_to_stdout(response)
     end
   end
 

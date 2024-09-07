@@ -18,7 +18,6 @@ module Analysis
     private
 
     def lines(file_uri:)
-
       array_of_file_lines = hash_lines[file_uri].split("\n")
       hash_lines[file_uri] = {}
 
