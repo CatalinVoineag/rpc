@@ -1,0 +1,2 @@
+class BelongsTo
+end

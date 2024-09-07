@@ -1,0 +1,2 @@
+class HasOne
+end
