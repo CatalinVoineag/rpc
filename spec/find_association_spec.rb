@@ -70,7 +70,7 @@ describe FindAssociation do
 
       it 'returns the association file path if class_name is present' do
         subject = described_class.new(
-          line_text: "  has_many :has_many, class_name: 'has_many_class_name'",
+          line_text: "  has_many :has_many, class_name: 'has_many_class_name', optional: true",
           file_uri: "file://#{Dir.pwd}/spec/test_project/app/models/test.rb",
           root_path: Dir.pwd
         ).call

@@ -74,26 +74,24 @@ class FindAssociation
   def get_class_name_file(line_text)
     array_of_words = line_text.split
     class_name = array_of_words[array_of_words.index('class_name:') + 1].gsub("'", '')
-    class_name_file = class_name.underscore
+    class_name_file = class_name.delete(',').underscore
 
     "#{class_name_file}.rb"
   end
 
   def find_start_line(path, association_file_name)
-    line = nil
-    association_file_name.gsub!(".rb", "")
-    class_name = association_file_name.split("_").map(&:capitalize).join
+    association_file_name.gsub!('.rb', '')
+    class_name = association_file_name.split('_').map(&:capitalize).join
 
     terminal = IO.popen("grep -in -h --no-filename class #{class_name} #{path}")
-      lines = terminal.readlines
+    lines = terminal.readlines
     terminal.close
 
-    line = lines.first.split(":").first.to_i - 1
-    line
+    lines.first.split(':').first.to_i - 1
   end
 
   def log(message)
-    File.open("/home/catalin/.local/state/nvim/lsp.log", "a") do |f|
+    File.open('/home/catalin/.local/state/nvim/lsp.log', 'a') do |f|
       f.write "#{message}\n"
     end
   end
