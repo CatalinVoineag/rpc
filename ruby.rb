@@ -186,7 +186,6 @@ class Lsp
         jsonrpc: '2.0',
         id: request[:id],
         result: {
-          priority: true,
           uri: "file://#{association.path}",
           range: {
             start: {
@@ -215,7 +214,6 @@ class Lsp
         jsonrpc: '2.0',
         id: request[:id],
         result: {
-          priority: true,
           uri: "file://#{controller_view.path}",
           range: {
             start: {
@@ -273,7 +271,6 @@ class Lsp
         jsonrpc: "2.0",
         id: request[:id],
         result: {
-          priority: true,
           uri: "file://#{controller.path}",
           range: {
             start: {
