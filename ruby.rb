@@ -3,6 +3,7 @@ require_relative "find_association"
 require_relative "find_controller_view"
 require_relative "find_controller"
 require_relative "find_class"
+require_relative "go_to_controller_from_routes"
 require "active_support/all"
 require "json"
 
@@ -13,7 +14,7 @@ class Lsp
   def call
     file_map = Analysis::FileMap.new
 
-    #Byebug.wait_connection = true
+#    Byebug.wait_connection = true
     #Byebug.start_server("localhost", 8080)
 
     #VS Code
@@ -276,6 +277,38 @@ class Lsp
             start: {
               line: controller.line_number,
               character: controller.char_number
+            },
+            end: {
+              line: 0,
+              character: 0
+            }
+          }
+        }
+      }.to_json
+
+      return write_to_stdout(response)
+    end
+
+    controller_from_routes = GoToControllerFromRoutes.new(
+      line:,
+      line_number:,
+      file_uri: uri,
+      file_map:,
+      root_path: file_map.root_path
+    ).call
+
+    if controller_from_routes&.path
+      response = {
+        jsonrpc: "2.0",
+        id: request[:id],
+        result: {
+          uri: "file://#{controller_from_routes.path}",
+          range: {
+            start: {
+              #line: controller_from_routes.line_number,
+              #character: controller_from_routes.char_number
+              line: 0,
+              character: 0
             },
             end: {
               line: 0,
