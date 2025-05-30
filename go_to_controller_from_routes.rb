@@ -41,26 +41,26 @@ class GoToControllerFromRoutes
 
   def namespaces
     namespace = {}
+    indents = number_of_indents(line)
+
+    current_contoller = line.strip.split(' ').second.gsub(':', '').gsub(',', '').pluralize
+    current_controller_name = "#{current_contoller}_controller.rb"
+
+    namespace[indents] = current_controller_name
+    indents -= 1
 
     file_map.hash_lines[file_uri].values[0..line_number.to_i - 1].reverse.each do |line_text|
       indents = number_of_indents(line_text)
       first_word = line_text.strip.split(' ').first
 
-      counter = indents
-      if controller_name(first_word) && namespace[counter].blank?
+      if controller_name(first_word) && namespace[indents].blank?
         second_word = line_text.strip.split(' ').second.gsub(':', '').gsub(',', '')
-        namespace[counter] = "#{second_word}"
-        counter -= 1
+        namespace[indents] = "#{second_word}"
+        indents -= 1
       end
-
-      break if indents.zero? && line_text.present?
     end
 
-    current_contoller = line.strip.split(' ').second.gsub(':', '').gsub(',', '').pluralize
-    current_controller_name = "#{current_contoller}_controller.rb"
-
-    array_of_namespaces = namespace.values.reverse
-    array_of_namespaces << current_controller_name
+    namespace.values.reverse
   end
 
   def routes_file?
