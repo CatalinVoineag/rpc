@@ -21,22 +21,33 @@ class GoToControllerFromRoutes
     return unless route?
 
     controller = Controller.new
-    controller.path = "#{root_path}/app/controllers/#{namespaces.join('/')}"
+    controller.path = controller_path
 
     controller
   end
 
   private
 
-  def number_of_indents(line_text)
-    number = 0
-    line_text.split('  ').map do |element|
-      break unless element.blank?
+  def controller_path
+    controller_namespace ||= namespaces  
+    path = nil
 
-      number += 1 if element.blank?
+    controller_namespace.each do |namespace|
+      path = final_path(controller_namespace)
+
+      if File.exist?(path)
+        break
+      else
+        # delete second to last
+        controller_namespace.delete(controller_namespace.last(2).first)
+      end
     end
 
-    number
+    path
+  end
+
+  def final_path(namespaces)
+    "#{root_path}/app/controllers/#{namespaces.join('/')}"
   end
 
   def namespaces
@@ -73,16 +84,19 @@ class GoToControllerFromRoutes
     controller_filename = "#{resrouce_name}_controller.rb"
 
     namespaces.reverse << controller_filename
-
-
-      #if File.exist?(association_path)
-      #  association.path = association_path
-      #  association.start_line = find_start_line(
-      #    association_path,
-      #    association_file
-      #  )
-      #end
   end
+
+  def number_of_indents(line_text)
+    number = 0
+    line_text.split('  ').map do |element|
+      break unless element.blank?
+
+      number += 1 if element.blank?
+    end
+
+    number
+  end
+
 
   def routes_file?
     uri_stricute = file_uri.gsub("file://", "").split('/')

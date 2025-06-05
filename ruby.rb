@@ -14,10 +14,8 @@ class Lsp
   def call
     file_map = Analysis::FileMap.new
 
-#    Byebug.wait_connection = true
-    #Byebug.start_server("localhost", 8080)
-
-    #VS Code
+    # Byebug.wait_connection = true
+    # Byebug.start_server("localhost", 8080)
 
     loop do
       buffer = STDIN.gets("\r\n\r\n")
