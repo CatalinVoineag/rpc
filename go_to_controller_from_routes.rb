@@ -40,27 +40,48 @@ class GoToControllerFromRoutes
   end
 
   def namespaces
-    namespace = {}
-    indents = number_of_indents(line)
+    block_names = []
 
-    current_contoller = line.strip.split(' ').second.gsub(':', '').gsub(',', '').pluralize
-    current_controller_name = "#{current_contoller}_controller.rb"
+    level_of_indent = number_of_indents(line) - 1
+    line_number.to_i.downto(0).each do |number|
+      line = file_map.lines_with_indents.fetch(file_uri).fetch(number.to_s)
+      content = line.fetch(:content)
+      line_indent = line.fetch(:indents)
+      words = content.split(' ') 
+      last_word = words.last 
+      first_word = words.first 
 
-    namespace[indents] = current_controller_name
-    indents -= 1
-
-    file_map.hash_lines[file_uri].values[0..line_number.to_i - 1].reverse.each do |line_text|
-      indents = number_of_indents(line_text)
-      first_word = line_text.strip.split(' ').first
-
-      if controller_name(first_word) && namespace[indents].blank?
-        second_word = line_text.strip.split(' ').second.gsub(':', '').gsub(',', '')
-        namespace[indents] = "#{second_word}"
-        indents -= 1
+      if last_word == 'do' && level_of_indent == line_indent
+        block_names << content
+        level_of_indent -= 1
       end
     end
 
-    namespace.values.reverse
+    namespaces = []
+
+    block_names.each do |block|
+      block_words = block.split(' ')
+      first_word = block_words.first
+      second_word = block_words.second
+      if ['resources', 'resource', 'namespace'].include?(first_word)
+        namespaces << second_word.gsub(/[:,]/, '')
+      end
+    end
+
+    words = line.strip.split(' ')
+    resrouce_name = words.second.to_s.gsub(/[:,]/, '').pluralize
+    controller_filename = "#{resrouce_name}_controller.rb"
+
+    namespaces.reverse << controller_filename
+
+
+      #if File.exist?(association_path)
+      #  association.path = association_path
+      #  association.start_line = find_start_line(
+      #    association_path,
+      #    association_file
+      #  )
+      #end
   end
 
   def routes_file?
@@ -80,10 +101,6 @@ class GoToControllerFromRoutes
                     array_of_strings.first == 'put' ||
                     array_of_strings.first == 'patch' ||
                     array_of_strings.first == 'match'
-  end
-
-  def controller_name(word)
-    word == 'namespace'
   end
 
   def log(message)
